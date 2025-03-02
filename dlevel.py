@@ -37,16 +37,27 @@ class DLevel:
             dest_vertices_world = [dest_world_matrix * vertex.co for vertex in dest_object.data.vertices]
             dest_faces = [polygon.vertices for polygon in dest_object.data.polygons]
             dest_bvh_tree = BVHTree.FromPolygons(dest_vertices_world, dest_faces, all_triangles=False, epsilon=0.0)
-            # for each src_object's location cast rays by (0.0, 0.0, -1.0) direction
+            # for each src_object's location cast rays down (0.0, 0.0, -1.0) and up (0.0, 0.0, 1.0) directions
             #   and check hit with dest_bvh_tree faces
-            raycasts = [(obj[0], dest_bvh_tree.ray_cast(obj[1], Vector((0.0, 0.0, -1.0)))) for obj in src_objects]
+            raycasts = [(obj[0], dest_bvh_tree.ray_cast(obj[1], Vector((0.0, 0.0, -1.0))), dest_bvh_tree.ray_cast(obj[1], Vector((0.0, 0.0, 1.0))))
+                        for obj in src_objects]
             # for each raycast result get distance to crossing point
-            for obj, raycast in raycasts:
-                if raycast != (None, None, None, None):
-                    distance = raycast[3]
-                    if distance:
-                        # move src object by this distance
-                        obj.location += Vector((0.0, 0.0, -distance))
+            for obj, raycast_down, raycast_up in raycasts:
+                if raycast_up != (None, None, None, None) or raycast_down != (None, None, None, None) :
+                    # has at leash one intersect with up or down
+                    distance_up = raycast_up[3]
+                    distance_down = raycast_down[3]
+                    if distance_up is not None and distance_down is not None:
+                        # has intersection up and down - move to upper
+                        lu = obj.location.z + (distance_up if distance_up else 0.0)
+                        ld = obj.location.z - (distance_down if distance_down else 0.0)
+                        obj.location.z = max(lu, ld)
+                    elif distance_up is not None:
+                        # has intersection only by up ray
+                        obj.location += Vector((0.0, 0.0, distance_up))
+                    elif distance_down is not None:
+                        # has intersection only by down ray
+                        obj.location += Vector((0.0, 0.0, -distance_down))
 
     @staticmethod
     def ui(layout, context):
