@@ -81,7 +81,8 @@ class DLevel:
             icon='FORCE_DRAG'
         )
         op.mode = context.scene.dlevel_prop_dlevel_mode
-        layout.prop(
+        row = layout.row()
+        row.prop(
             data=context.scene,
             property='dlevel_prop_dlevel_mode',
             expand=True
